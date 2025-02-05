@@ -385,3 +385,133 @@
 **User interface:** A program that allows the user to control the functions of the operating system
 
 **Virtual machine (VM)**: A virtual version of a physical computer
+
+**Application:** A program that performs a specific task
+
+**Bash:** The default shell in most Linux distributions
+
+**CentOS:** An open-source distribution that is closely related to Red Hat
+
+**Central Processing Unit (CPU):** A computer’s main processor, which is used to perform general computing tasks on a computer
+
+**Command:** An instruction telling the computer to do something
+
+**Digital forensics:** The practice of collecting and analyzing data to determine what has happened after an attack
+
+**Directory:** A file that organizes where other files are stored
+
+**Distributions:** The different versions of Linux
+
+**File path:** The location of a file or directory
+
+**Filesystem Hierarchy Standard (FHS):** The component of the Linux OS that organizes data
+
+**Graphical user interface (GUI):** A user interface that uses icons on the screen to manage different tasks on the computer
+
+**Hard drive:** A hardware component used for long-term memory
+
+**Hardware**: The physical components of a computer
+
+**Internal hardware:** The components required to run the computer
+
+**Kali Linux ™**: An open-source distribution of Linux that is widely used in the security industry
+
+**Kernel:** The component of the Linux OS that manages processes and memory
+
+**Linux:** An open source operating system
+
+**Package:** A piece of software that can be combined with other packages to form an application
+
+**Package manager:** A tool that helps users install, manage, and remove packages or applications
+
+**Parrot:** An open-source distribution that is commonly used for security
+
+**Penetration test (pen test):** A simulated attack that helps identify vulnerabilities in systems, networks, websites, applications, and processes
+
+**Peripheral devices:** Hardware components that are attached and controlled by the computer system
+
+**Random Access Memory (RAM):** A hardware component used for short-term memory
+
+**Red Hat® Enterprise Linux®** (also referred to simply as Red Hat in this course)**:** A subscription-based distribution of Linux built for enterprise use
+
+**Shell:** The command-line interpreter 
+
+**Standard error:** An error message returned by the OS through the shell
+
+**Standard input:** Information received by the OS via the command line
+
+**Standard output:** Information returned by the OS through the shell
+
+**String data:** Data consisting of an ordered sequence of characters
+
+**Ubuntu:** An open-source, user-friendly distribution that is widely used in security and other industries
+
+**User:** The person interacting with a computer
+
+**Absolute file path:** The full file path, which starts from the root
+
+**Argument (Linux):** Specific information needed by a command
+
+**Authentication:** The process of verifying who someone is
+
+**Authorization:** The concept of granting access to specific resources in a system
+
+**Bash:** The default shell in most Linux distributions
+
+**Command:** An instruction telling the computer to do something
+
+**File path:** The location of a file or directory
+
+**Filesystem Hierarchy Standard (FHS):** The component of the Linux OS that organizes data
+
+**Filtering:** Selecting data that match a certain condition
+
+**nano:** A command-line file editor that is available by default in many Linux distributions
+
+**Options:** Input that modifies the behavior of a command
+
+**Permissions:** The type of access granted for a file or directory
+
+**Principle of least privilege:** The concept of granting only the minimal access and authorization required to complete a task or function
+
+**Relative file path:** A file path that starts from the user's current directory
+
+**Root directory:** The highest-level directory in Linux
+
+**Root user (or superuser):** A user with elevated privileges to modify the system
+
+**Standard input:** Information received by the OS via the command line
+
+**Standard output:** Information returned by the OS through the shell
+
+**Database**: An organized collection of information or data
+
+**Date and time data:** Data representing a date and/or time
+
+**Exclusive operator**: An operator that does not include the value of comparison
+
+**Filtering:** Selecting data that match a certain condition
+
+**Foreign key:** A column in a table that is a primary key in another table 
+
+**Inclusive operator:** An operator that includes the value of comparison
+
+**Log:** A record of events that occur within an organization's systems
+
+**Numeric data:** Data consisting of numbers
+
+**Operator:** A symbol or keyword that represents an operation
+
+**Primary key:** A column where every row has a unique entry
+
+**Query:** A request for data from a database table or a combination of tables
+
+**Relational database:** A structured database containing tables that are related to each other
+
+**String data**: Data consisting of an ordered sequence of characters
+
+**SQL (Structured Query Language):** A programming language used to create, interact with, and request information from a database
+
+**Syntax:** The rules that determine what is correctly structured in a computing language
+
+**Wildcard**: A special character that can be substituted with any other character
