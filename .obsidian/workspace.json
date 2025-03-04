@@ -41,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CybersecNotes/glossary.md",
+                "file": "CybersecNotes/cheatsheet.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "glossary"
+              "title": "cheatsheet"
             }
           }
         ],
@@ -190,8 +190,9 @@
   },
   "active": "f783091d254a5cdf",
   "lastOpenFiles": [
-    "CybersecNotes/test.md",
     "CybersecNotes/glossary.md",
+    "CybersecNotes/cheatsheet.md",
+    "CybersecNotes/test.md",
     "test",
     "CybersecNotes",
     "Untitled",
