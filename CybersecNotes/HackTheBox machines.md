@@ -1,0 +1,4 @@
+
+| machine name | pwned? |
+| :----------- | :----: |
+| nibbles      |   ✅    |
