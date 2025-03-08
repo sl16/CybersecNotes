@@ -69,12 +69,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CybersecNotes/HackTheBox machines.md",
+                "file": "CybersecNotes/dump socket statistics.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "HackTheBox machines"
+              "title": "dump socket statistics"
             }
           }
         ],
@@ -218,8 +218,9 @@
   },
   "active": "2a1b57362ea3ed99",
   "lastOpenFiles": [
-    "CybersecNotes/cheatsheet.md",
     "CybersecNotes/HackTheBox machines.md",
+    "CybersecNotes/dump socket statistics.md",
+    "CybersecNotes/cheatsheet.md",
     "CybersecNotes/test.md",
     "CybersecNotes/upgrade reverse shell to tty.md",
     "CybersecNotes/glossary.md",
